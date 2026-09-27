@@ -1,8 +1,9 @@
 import type { ChangeEvent, ReactNode } from 'react'
-import { useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { SAMPLE_SCRIPT } from './script'
 import type { Settings } from './settings'
 import { roleColor } from './settings'
+import { buildShareUrl } from './share'
 
 interface Props {
   source: string
@@ -28,6 +29,34 @@ export default function Editor({ source, setSource, roles, lineCount, settings, 
     const file = e.target.files?.[0]
     if (file) setSource(await file.text())
     e.target.value = ''
+  }
+
+  // 事先算好分享網址：iOS 的分享與剪貼簿必須在點擊當下同步呼叫，不能先等壓縮完成
+  const [shareUrl, setShareUrl] = useState('')
+  useEffect(() => {
+    let cancelled = false
+    buildShareUrl(source, location.href).then((url) => !cancelled && setShareUrl(url))
+    return () => {
+      cancelled = true
+    }
+  }, [source])
+
+  const [shareStatus, setShareStatus] = useState('')
+  const onShare = async () => {
+    const url = shareUrl
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: '提詞機腳本', url })
+        return
+      }
+      await navigator.clipboard.writeText(url)
+      setShareStatus('已複製連結')
+    } catch (err) {
+      // 使用者取消分享時不用提示
+      if ((err as Error).name === 'AbortError') return
+      prompt('複製這個連結傳給對方：', url)
+    }
+    setTimeout(() => setShareStatus(''), 2500)
   }
 
   return (
@@ -58,6 +87,8 @@ export default function Editor({ source, setSource, roles, lineCount, settings, 
             <input ref={fileRef} type="file" accept=".txt,text/plain" hidden onChange={onFile} />
             <button onClick={() => setSource(SAMPLE_SCRIPT)}>載入範例</button>
             <button onClick={() => confirm('確定清空腳本？') && setSource('')}>清空</button>
+            <button onClick={onShare} disabled={source.trim() === '' || !shareUrl}>分享腳本連結</button>
+            {shareStatus && <span className="muted status">{shareStatus}</span>}
           </div>
           <details>
             <summary>腳本格式說明</summary>
@@ -66,6 +97,7 @@ export default function Editor({ source, setSource, roles, lineCount, settings, 
               <li>沒有前綴的下一行，會接在上一位角色的台詞後面</li>
               <li>空一行代表段落結束；之後沒有前綴的文字視為旁白</li>
               <li>整行用括號包起來，例如 <code>（兩人看向鏡頭）</code>，是舞台指示</li>
+              <li>「分享腳本連結」會把腳本放進網址裡，對方點開就能載入同一份腳本（不會上傳到任何伺服器）</li>
               <li>台詞中的 <code>（笑）</code> 會變淡顯示，<code>**重音**</code> 會加底線強調</li>
             </ul>
           </details>
