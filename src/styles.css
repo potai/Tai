@@ -279,6 +279,16 @@ code {
   font-weight: 400;
 }
 
+.blk.scene {
+  margin-top: 0.6em;
+  padding-top: 0.3em;
+  border-top: 1px solid #444;
+  color: var(--accent);
+  font-size: 0.5em;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
 .blk .name {
   display: inline-block;
   margin-right: 0.4em;
@@ -495,4 +505,15 @@ code {
 
 .row .status {
   align-self: center;
+}
+
+.hud .scene-select {
+  min-height: 38px;
+  max-width: 9em;
+  padding: 6px 8px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: rgba(60, 60, 60, 0.9);
+  color: var(--text);
+  font: inherit;
 }

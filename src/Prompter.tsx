@@ -21,7 +21,7 @@ export default function Prompter({ blocks, roles, settings, setSettings, onExit 
 
   const display = useMemo(() => {
     const list = visibleBlocks(blocks, role, { showCue: settings.showCue })
-    return role === null && !settings.showCues ? list.filter((b) => b.kind === 'line') : list
+    return role === null && !settings.showCues ? list.filter((b) => b.kind === 'line' || b.kind === 'scene') : list
   }, [blocks, role, settings.showCue, settings.showCues])
 
   const [playing, setPlaying] = useState(false)
@@ -195,6 +195,15 @@ export default function Prompter({ blocks, roles, settings, setSettings, onExit 
     [focusY, setY],
   )
 
+  const scenes = useMemo(
+    () => display.flatMap((b, i) => (b.kind === 'scene' ? [{ index: i, title: b.text }] : [])),
+    [display],
+  )
+  const jumpTo = (index: number) => {
+    const offset = offsetsRef.current[index]
+    if (offset !== undefined) setY(offset - focusY)
+  }
+
   const restart = () => {
     pause()
     setY(0)
@@ -326,7 +335,7 @@ export default function Prompter({ blocks, roles, settings, setSettings, onExit 
           }}
         >
           {display.map((b) => {
-            const color = b.speaker ? roleColor(settings, roles, b.speaker) : undefined
+            const color = b.ensemble ? '#ffffff' : b.speaker ? roleColor(settings, roles, b.speaker) : undefined
             return (
               <div key={b.id} className={`blk ${b.kind}`} style={{ color }}>
                 {b.cueBefore && <div className="cue-before">{b.cueBefore}</div>}
@@ -395,6 +404,23 @@ export default function Prompter({ blocks, roles, settings, setSettings, onExit 
             <button onClick={() => jump(-1)} aria-label="上一段">◀︎</button>
             <button className="play" onClick={play} aria-label="播放">▶︎</button>
             <button onClick={() => jump(1)} aria-label="下一段">▶︎▏</button>
+            {scenes.length > 0 && (
+              <select
+                className="scene-select"
+                value=""
+                onChange={(e) => jumpTo(Number(e.target.value))}
+                aria-label="跳到場次"
+              >
+                <option value="" disabled>
+                  場次
+                </option>
+                {scenes.map((sc) => (
+                  <option key={sc.index} value={sc.index}>
+                    {sc.title}
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
           <div className="group">
             <span className="label">速度</span>
