@@ -12,6 +12,7 @@
 - 開始前倒數、剩餘時間估算、螢幕常亮（Wake Lock）
 - 腳本與設定自動存在手機上（localStorage）
 - **分享腳本連結**：腳本壓縮後放進網址，對方點開就載入同一份腳本，不經過任何伺服器
+- **從 Google 文件匯入**：用 Google 帳號登入後選一份文件，之後文件改版按「重新讀取」即可（只能讀取使用者自己選的文件）
 - **離線使用**：打開過一次後，沒有網路也能使用（Service Worker）
 
 ## 操作方式
@@ -51,6 +52,28 @@
 ## 在 iPhone 上使用
 
 iPhone 的 Safari 不支援網頁全螢幕 API。要隱藏網址列，請用 Safari 開啟後按「分享 → 加入主畫面」，再從主畫面的圖示開啟。
+
+## Google 文件匯入的設定
+
+需要一個 Google Cloud 專案（免費），並把三個值放進 `.env.production`：
+
+```
+VITE_GOOGLE_CLIENT_ID=xxxx.apps.googleusercontent.com
+VITE_GOOGLE_API_KEY=AIza...
+VITE_GOOGLE_APP_ID=123456789012   # 專案編號
+```
+
+這三個值本來就會出現在網頁原始碼中，不是密碼；API 金鑰要限制只能從 `https://potai.github.io/*` 使用。
+沒有設定時，「從 Google 文件匯入」按鈕不會出現。
+
+Google Cloud 需要的設定：
+
+- 啟用 **Google Drive API** 與 **Google Picker API**
+- OAuth 同意畫面：外部使用者、範圍只要 `drive.file`，狀態設為「正式版」
+- OAuth 用戶端（網頁應用程式）：
+  - 已授權的 JavaScript 來源：`https://potai.github.io`
+  - 已授權的重新導向 URI：`https://potai.github.io/Tai/`
+- API 金鑰：網站限制 `https://potai.github.io/*`，API 限制 Google Picker API
 
 ## 開發
 

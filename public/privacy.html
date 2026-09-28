@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>隱私權政策｜對話提詞機</title>
+    <style>
+      :root { color-scheme: light dark; }
+      body {
+        max-width: 42rem;
+        margin: 0 auto;
+        padding: 24px 16px 48px;
+        font: 16px/1.75 -apple-system, BlinkMacSystemFont, 'PingFang TC', 'Noto Sans TC', 'Microsoft JhengHei', sans-serif;
+      }
+      h1 { font-size: 1.5rem; }
+      h2 { font-size: 1.15rem; margin-top: 2rem; }
+      code { font-size: 0.9em; }
+    </style>
+  </head>
+  <body>
+    <h1>對話提詞機 隱私權政策</h1>
+    <p>最後更新：2026 年 9 月 28 日</p>
+
+    <p>
+      「對話提詞機」（<a href="./">https://potai.github.io/Tai/</a>）是一個在瀏覽器中執行的提詞機網頁。
+      本網站沒有後端伺服器與資料庫，不會收集、儲存或分享你的個人資料。
+    </p>
+
+    <h2>腳本與設定</h2>
+    <p>
+      你輸入或匯入的腳本、字級、速度等設定，只儲存在你自己裝置的瀏覽器中（localStorage），不會上傳到任何伺服器。
+      清除瀏覽器的網站資料即可刪除。
+    </p>
+
+    <h2>分享腳本連結</h2>
+    <p>
+      使用「分享腳本連結」時，腳本會被壓縮後放在網址的「#」之後。瀏覽器不會把這部分送到任何伺服器，
+      腳本內容只存在於連結本身，以及你把連結傳給的對象。
+    </p>
+
+    <h2>Google 文件匯入</h2>
+    <p>使用「從 Google 文件匯入」時：</p>
+    <ul>
+      <li>
+        本網站只會向 Google 申請 <code>drive.file</code> 權限，也就是只能存取你在 Google 選擇器中親自選取的文件，
+        無法看到你雲端硬碟中的其他檔案。
+      </li>
+      <li>本網站只會讀取所選文件的名稱與文字內容，用來顯示提詞內容；不會修改、刪除或建立任何檔案。</li>
+      <li>
+        Google 核發的存取權杖只暫存在瀏覽器分頁中（sessionStorage），關閉分頁後即失效，
+        文件內容也只會存在你的裝置上，不會傳送給 Google 以外的任何第三方。
+      </li>
+      <li>
+        本網站使用 Google API 取得的資料，遵守
+        <a href="https://developers.google.com/terms/api-services-user-data-policy">Google API 服務使用者資料政策</a>，
+        包括其中的「有限使用」規定。
+      </li>
+      <li>
+        你可以隨時到 <a href="https://myaccount.google.com/permissions">Google 帳戶的第三方存取權</a> 移除本網站的權限。
+      </li>
+    </ul>
+
+    <h2>第三方服務</h2>
+    <p>
+      本網站由 GitHub Pages 提供網頁代管；使用 Google 文件匯入時會載入 Google 的登入與選擇器元件。
+      這些服務的資料處理方式，請參閱 GitHub 與 Google 各自的隱私權政策。本網站沒有使用任何分析或廣告追蹤工具。
+    </p>
+
+    <h2>聯絡我們</h2>
+    <p>
+      如有任何問題，請在 <a href="https://github.com/potai/Tai/issues">GitHub</a> 上提出。
+    </p>
+  </body>
+</html>
