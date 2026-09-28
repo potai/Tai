@@ -538,3 +538,13 @@ button.primary {
   color: #000;
   font-weight: 600;
 }
+
+.site-footer {
+  margin-top: 24px;
+  font-size: 13px;
+  text-align: center;
+}
+
+.site-footer a {
+  color: var(--muted);
+}

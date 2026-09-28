@@ -180,6 +180,10 @@ export default function Editor({
           <Toggle checked={settings.dimInactive} onChange={(v) => set('dimInactive', v)}>焦點以外的段落變暗</Toggle>
         </section>
       </div>
+
+      <footer className="site-footer">
+        <a href="./privacy.html">隱私權政策</a>
+      </footer>
     </div>
   )
 }
