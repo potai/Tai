@@ -1,10 +1,11 @@
-import type { ChangeEvent, ReactNode } from 'react'
+import type { ChangeEvent, FormEvent, ReactNode } from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { SAMPLE_SCRIPT } from './script'
 import type { Settings } from './settings'
 import { roleColor } from './settings'
 import type { LinkedDoc } from './google'
 import { googleEnabled } from './google'
+import { parseDocId } from './gdoc'
 import { buildShareUrl } from './share'
 
 interface Props {
@@ -17,8 +18,7 @@ interface Props {
   onStart: () => void
   linkedDoc: LinkedDoc | null
   googleStatus: string
-  onGoogleImport: () => void
-  onGoogleReload: () => void
+  onGoogleLoad: (id: string) => void
 }
 
 const isStandalone =
@@ -37,11 +37,26 @@ export default function Editor({
   onStart,
   linkedDoc,
   googleStatus,
-  onGoogleImport,
-  onGoogleReload,
+  onGoogleLoad,
 }: Props) {
   const fileRef = useRef<HTMLInputElement>(null)
   const set = <K extends keyof Settings>(key: K, value: Settings[K]) => setSettings((s) => ({ ...s, [key]: value }))
+
+  const [docLink, setDocLink] = useState('')
+  const [changingDoc, setChangingDoc] = useState(false)
+  const [linkError, setLinkError] = useState('')
+  const onImportLink = (e: FormEvent) => {
+    e.preventDefault()
+    const id = parseDocId(docLink)
+    if (!id) {
+      setLinkError('看不懂這個連結，請貼上 Google 文件的網址（docs.google.com/document/d/…）')
+      return
+    }
+    setLinkError('')
+    setChangingDoc(false)
+    setDocLink('')
+    onGoogleLoad(id)
+  }
 
   const onFile = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -96,7 +111,7 @@ export default function Editor({
         <section className="script-pane">
           {googleEnabled && (
             <div className="gdoc">
-              {linkedDoc ? (
+              {linkedDoc && !changingDoc ? (
                 <>
                   <span className="gdoc-name">
                     📄 {linkedDoc.name}
@@ -104,13 +119,30 @@ export default function Editor({
                       {' '}· 讀取於 {new Date(linkedDoc.loadedAt).toLocaleString('zh-TW', { dateStyle: 'short', timeStyle: 'short' })}
                     </span>
                   </span>
-                  <button className="primary" onClick={onGoogleReload}>重新讀取</button>
-                  <button onClick={onGoogleImport}>換一份</button>
+                  <button className="primary" onClick={() => onGoogleLoad(linkedDoc.id)}>重新讀取</button>
+                  <button onClick={() => setChangingDoc(true)}>換一份</button>
                 </>
               ) : (
-                <button className="primary" onClick={onGoogleImport}>從 Google 文件匯入</button>
+                <form className="gdoc-form" onSubmit={onImportLink}>
+                  <input
+                    type="url"
+                    inputMode="url"
+                    value={docLink}
+                    onChange={(e) => setDocLink(e.target.value)}
+                    placeholder="貼上 Google 文件連結"
+                    aria-label="Google 文件連結"
+                  />
+                  <button className="primary" type="submit" disabled={docLink.trim() === ''}>
+                    匯入
+                  </button>
+                  {linkedDoc && (
+                    <button type="button" onClick={() => setChangingDoc(false)}>
+                      取消
+                    </button>
+                  )}
+                </form>
               )}
-              {googleStatus && <span className="muted status">{googleStatus}</span>}
+              {(linkError || googleStatus) && <span className="muted status">{linkError || googleStatus}</span>}
             </div>
           )}
           <textarea
@@ -134,7 +166,7 @@ export default function Editor({
               <li>沒有前綴的下一行，會接在上一位角色的台詞後面</li>
               <li>空一行代表段落結束；之後沒有前綴的文字視為旁白</li>
               <li>整行用括號包起來，例如 <code>（兩人看向鏡頭）</code>，是舞台指示</li>
-              <li>「從 Google 文件匯入」可以直接讀取整份腳本文件；文件改過之後按「重新讀取」就會載入最新版</li>
+              <li>在上方貼上 Google 文件連結（文件的「分享 → 複製連結」）就能直接匯入整份腳本；文件改過之後按「重新讀取」就會載入最新版</li>
               <li>「分享腳本連結」會把腳本放進網址裡，對方點開就能載入同一份腳本（不會上傳到任何伺服器）</li>
               <li>台詞中的 <code>（笑）</code> 會變淡顯示，<code>**重音**</code> 會加底線強調</li>
             </ul>
