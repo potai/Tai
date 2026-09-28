@@ -1,26 +1,28 @@
 // 從 Google 文件匯入腳本。
 //
-// 流程：Google 登入（OAuth 重新導向，iPhone「加入主畫面」模式下也能用）→ Google Picker 選文件
-// → Drive API 匯出成文字。只申請 drive.file 權限：App 只能讀使用者在 Picker 裡親自選過的文件，
-// 看不到雲端硬碟裡的其他檔案。
+// 流程：貼上 Google 文件連結 → Google 登入（OAuth 重新導向，iPhone「加入主畫面」模式下也能用）
+// → 用 Google Docs API 讀取文件內容。
 //
-// 下面三個值由 Google Cloud 專案產生，本來就會出現在網頁原始碼中，不是密碼：
-// API 金鑰已限制只能從本站網址使用，登入也只接受本站的重新導向網址。
+// 不使用 Google Picker：Picker 是嵌在頁面裡的 Google 視窗，iPhone 的瀏覽器預設會擋它的登入 Cookie，
+// 會出現「無法存取你的 Google 帳戶」。
+//
+// 用戶端 ID 本來就會出現在網頁原始碼中，不是密碼；登入只接受本站的重新導向網址。
+
+import type { GoogleDocument } from './gdoc'
+import { documentToText } from './gdoc'
 
 export const GOOGLE_CONFIG = {
   clientId: import.meta.env.VITE_GOOGLE_CLIENT_ID ?? '',
-  apiKey: import.meta.env.VITE_GOOGLE_API_KEY ?? '',
-  /** Google Cloud 專案編號（Picker 用來辨識是哪個 App） */
-  appId: import.meta.env.VITE_GOOGLE_APP_ID ?? '',
 }
 
-export const googleEnabled = Boolean(GOOGLE_CONFIG.clientId && GOOGLE_CONFIG.apiKey && GOOGLE_CONFIG.appId)
+export const googleEnabled = Boolean(GOOGLE_CONFIG.clientId)
 
-const SCOPE = 'https://www.googleapis.com/auth/drive.file'
+// 唯讀：只能讀取 Google 文件，不能修改或刪除
+const SCOPE = 'https://www.googleapis.com/auth/documents.readonly'
 const TOKEN_KEY = 'tai.google.token'
 const PENDING_KEY = 'tai.google.pending'
 
-export type GoogleAction = { type: 'pick' } | { type: 'reload'; id: string }
+export type GoogleAction = { type: 'load'; id: string }
 
 export interface LinkedDoc {
   id: string
@@ -44,7 +46,7 @@ function randomState(): string {
 export function currentToken(): string | null {
   try {
     const saved = JSON.parse(sessionStorage.getItem(TOKEN_KEY) ?? 'null')
-    if (saved && saved.expiresAt - 60_000 > Date.now()) return saved.token
+    if (saved && saved.scope === SCOPE && saved.expiresAt - 60_000 > Date.now()) return saved.token
   } catch {
     // 忽略
   }
@@ -87,84 +89,30 @@ export function consumeAuthRedirect(): { action: GoogleAction } | { error: strin
   if (params.has('error')) {
     return { error: params.get('error') === 'access_denied' ? '已取消 Google 登入。' : 'Google 登入失敗，請再試一次。' }
   }
+  if (!(params.get('scope') ?? '').split(' ').includes(SCOPE)) {
+    return { error: '需要允許「查看你的 Google 文件」才能匯入，請再試一次並勾選權限。' }
+  }
 
   const expiresIn = Number(params.get('expires_in') ?? 3600)
   sessionStorage.setItem(
     TOKEN_KEY,
-    JSON.stringify({ token: params.get('access_token'), expiresAt: Date.now() + expiresIn * 1000 }),
+    JSON.stringify({ token: params.get('access_token'), scope: SCOPE, expiresAt: Date.now() + expiresIn * 1000 }),
   )
   return { action: pending.action }
-}
-
-// ---------- 選文件 ----------
-
-function loadScript(src: string): Promise<void> {
-  return new Promise((resolve, reject) => {
-    if (document.querySelector(`script[src="${src}"]`)) return resolve()
-    const el = document.createElement('script')
-    el.src = src
-    el.async = true
-    el.onload = () => resolve()
-    el.onerror = () => reject(new Error('無法載入 Google 元件，請確認網路連線。'))
-    document.head.appendChild(el)
-  })
-}
-
-let pickerReady: Promise<void> | null = null
-function loadPicker(): Promise<void> {
-  pickerReady ??= loadScript('https://apis.google.com/js/api.js').then(
-    () => new Promise<void>((resolve) => window.gapi.load('picker', () => resolve())),
-  )
-  return pickerReady
-}
-
-/** 開啟 Google Picker，回傳使用者選的文件；取消時回傳 null */
-export async function pickDocument(token: string): Promise<{ id: string; name: string } | null> {
-  await loadPicker()
-  const picker = window.google.picker
-  return new Promise((resolve) => {
-    const view = new picker.DocsView(picker.ViewId.DOCUMENTS).setMode(picker.DocsViewMode.LIST)
-    new picker.PickerBuilder()
-      .addView(view)
-      .setOAuthToken(token)
-      .setDeveloperKey(GOOGLE_CONFIG.apiKey)
-      .setAppId(GOOGLE_CONFIG.appId)
-      // 告訴 Picker 外層網頁的網址；API 金鑰設了「網站限制」時，Google 靠這個確認請求來自本站
-      .setOrigin(location.origin)
-      .setLocale('zh-TW')
-      .setTitle('選擇腳本文件')
-      .setCallback((data) => {
-        if (data.action === picker.Action.PICKED) {
-          const doc = data.docs[0]
-          resolve({ id: doc.id, name: doc.name })
-        } else if (data.action === picker.Action.CANCEL) {
-          resolve(null)
-        }
-      })
-      .build()
-      .setVisible(true)
-  })
 }
 
 // ---------- 讀取內容 ----------
 
 export class TokenExpiredError extends Error {}
 
-/** 把 Google 文件匯出成文字；優先用 Markdown，保留標題結構 */
 export async function fetchDocumentText(token: string, id: string): Promise<{ name: string; text: string }> {
-  const api = `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(id)}`
-  const headers = { Authorization: `Bearer ${token}` }
-
-  const meta = await fetch(`${api}?fields=name`, { headers })
-  if (meta.status === 401) throw new TokenExpiredError()
-  if (meta.status === 404) throw new Error('找不到這份文件，可能已被刪除，或需要重新從 Google 文件選擇。')
-  if (!meta.ok) throw new Error(`讀取文件失敗（${meta.status}）`)
-  const { name } = await meta.json()
-
-  for (const mimeType of ['text/markdown', 'text/plain']) {
-    const res = await fetch(`${api}/export?mimeType=${encodeURIComponent(mimeType)}`, { headers })
-    if (res.status === 401) throw new TokenExpiredError()
-    if (res.ok) return { name, text: await res.text() }
-  }
-  throw new Error('無法匯出這份文件，請確認它是 Google 文件格式。')
+  const res = await fetch(`https://docs.googleapis.com/v1/documents/${encodeURIComponent(id)}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  if (res.status === 401) throw new TokenExpiredError()
+  if (res.status === 403) throw new Error('你的 Google 帳號沒有這份文件的檢視權限，請確認登入的帳號是否正確。')
+  if (res.status === 404) throw new Error('找不到這份文件，請確認連結是否正確，或文件是否已被刪除。')
+  if (!res.ok) throw new Error(`讀取文件失敗（${res.status}）`)
+  const doc: GoogleDocument = await res.json()
+  return { name: doc.title ?? '未命名文件', text: documentToText(doc) }
 }

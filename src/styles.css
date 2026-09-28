@@ -548,3 +548,22 @@ button.primary {
 .site-footer a {
   color: var(--muted);
 }
+
+.gdoc-form {
+  display: flex;
+  flex: 1 1 100%;
+  gap: 8px;
+}
+
+.gdoc-form input {
+  flex: 1;
+  min-width: 0;
+  min-height: 40px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+  font-size: 16px;
+}
