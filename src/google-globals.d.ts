@@ -24,6 +24,7 @@ declare namespace GooglePicker {
     setOAuthToken(token: string): PickerBuilder
     setDeveloperKey(key: string): PickerBuilder
     setAppId(appId: string): PickerBuilder
+    setOrigin(origin: string): PickerBuilder
     setLocale(locale: string): PickerBuilder
     setTitle(title: string): PickerBuilder
     setCallback(cb: (data: PickerResponse) => void): PickerBuilder

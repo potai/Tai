@@ -129,6 +129,8 @@ export async function pickDocument(token: string): Promise<{ id: string; name: s
       .setOAuthToken(token)
       .setDeveloperKey(GOOGLE_CONFIG.apiKey)
       .setAppId(GOOGLE_CONFIG.appId)
+      // 告訴 Picker 外層網頁的網址；API 金鑰設了「網站限制」時，Google 靠這個確認請求來自本站
+      .setOrigin(location.origin)
       .setLocale('zh-TW')
       .setTitle('選擇腳本文件')
       .setCallback((data) => {
