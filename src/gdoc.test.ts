@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { GoogleDocument } from './gdoc'
-import { documentToText, parseDocId } from './gdoc'
+import { documentToText, parseDocId, shouldConfirmOverwrite, textFingerprint } from './gdoc'
 import { parseScript } from './script'
 
 const ID = '1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789_-abcd'
@@ -65,5 +65,34 @@ describe('documentToText', () => {
       ['line', '小熊', '第一句\n接著說'],
       ['line', '兩人', '再見！'],
     ])
+  })
+})
+
+describe('shouldConfirmOverwrite', () => {
+  const sample = '範例'
+  const loaded = '阿明：第一版'
+  const fp = textFingerprint(loaded)
+
+  it('does not ask when the script is untouched since the last Google load', () => {
+    expect(shouldConfirmOverwrite({ current: loaded, incoming: '阿明：第二版', loadedFingerprint: fp, sample })).toBe(false)
+  })
+
+  it('asks when the script was edited on the device', () => {
+    expect(shouldConfirmOverwrite({ current: '阿明：現場改過', incoming: '阿明：第二版', loadedFingerprint: fp, sample })).toBe(true)
+  })
+
+  it('asks when replacing a pasted script that never came from Google', () => {
+    expect(shouldConfirmOverwrite({ current: '小美：手動貼的', incoming: loaded, sample })).toBe(true)
+  })
+
+  it('never asks for empty, sample, or identical content', () => {
+    expect(shouldConfirmOverwrite({ current: '', incoming: loaded, sample })).toBe(false)
+    expect(shouldConfirmOverwrite({ current: sample, incoming: loaded, sample })).toBe(false)
+    expect(shouldConfirmOverwrite({ current: '阿明：現場改過', incoming: '阿明：現場改過', loadedFingerprint: fp, sample })).toBe(false)
+  })
+
+  it('fingerprints differ for different text', () => {
+    expect(textFingerprint('阿明：一')).not.toBe(textFingerprint('阿明：二'))
+    expect(textFingerprint(loaded)).toBe(fp)
   })
 })

@@ -126,3 +126,15 @@ describe('template documents', () => {
     expect(parseScript('阿明：你好').roles).toEqual(['阿明'])
   })
 })
+
+describe('bold speaker names', () => {
+  it('treats **name**: and **name:** the same as a plain name', () => {
+    const { roles, blocks } = parseScript('**阿明**：哈囉\n**小美：**你好\n阿明：再見')
+    expect(roles).toEqual(['阿明', '小美'])
+    expect(blocks.map((b) => b.text)).toEqual(['哈囉', '你好', '再見'])
+  })
+
+  it('keeps emphasis inside the line', () => {
+    expect(parseScript('阿明：這很**重要**').blocks[0].text).toBe('這很**重要**')
+  })
+})

@@ -3,7 +3,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import type { Block } from './script'
 import { inlineSegments, visibleBlocks } from './script'
 import type { Settings } from './settings'
-import { roleColor, speedToPxPerSec } from './settings'
+import { formatSpeed, roleColor, speedToPxPerSec, stepSpeed } from './settings'
 
 interface Props {
   blocks: Block[]
@@ -171,10 +171,10 @@ export default function Prompter({ blocks, roles, settings, setSettings, onExit 
   }, [])
 
   const changeSpeed = useCallback(
-    (delta: number) => {
-      const speed = Math.min(30, Math.max(1, settings.speed + delta))
+    (dir: 1 | -1) => {
+      const speed = stepSpeed(settings.speed, dir)
       setSettings((s) => ({ ...s, speed }))
-      flash(`速度 ${speed}`)
+      flash(`速度 ${formatSpeed(speed)}`)
     },
     [settings.speed, setSettings, flash],
   )
@@ -425,7 +425,7 @@ export default function Prompter({ blocks, roles, settings, setSettings, onExit 
           <div className="group">
             <span className="label">速度</span>
             <button onClick={() => changeSpeed(-1)}>−</button>
-            <span className="val">{settings.speed}</span>
+            <span className="val">{formatSpeed(settings.speed)}</span>
             <button onClick={() => changeSpeed(1)}>＋</button>
           </div>
           <div className="group">
