@@ -3,12 +3,49 @@ import Editor from './Editor'
 import Prompter from './Prompter'
 import { parseScript, SAMPLE_SCRIPT } from './script'
 import { DEFAULT_SETTINGS, usePersistentState } from './settings'
+import type { GoogleAction, LinkedDoc } from './google'
+import { consumeAuthRedirect, currentToken, fetchDocumentText, pickDocument, signIn, TokenExpiredError } from './google'
 import { decodeScript, readShareCode } from './share'
 
 export default function App() {
   const [source, setSource] = usePersistentState('tai.script', SAMPLE_SCRIPT)
   const [settings, setSettings] = usePersistentState('tai.settings', DEFAULT_SETTINGS)
   const [screen, setScreen] = useState<'edit' | 'prompt'>('edit')
+  const [linkedDoc, setLinkedDoc] = usePersistentState<LinkedDoc | null>('tai.gdoc', null)
+  const [googleStatus, setGoogleStatus] = useState('')
+
+  // 從 Google 文件匯入或重新讀取；還沒登入（或登入過期）時先去 Google 登入，回來後自動繼續
+  const runGoogle = async (action: GoogleAction) => {
+    const token = currentToken()
+    if (!token) return signIn(action)
+    try {
+      let id: string
+      if (action.type === 'pick') {
+        const picked = await pickDocument(token)
+        if (!picked) return
+        id = picked.id
+      } else {
+        id = action.id
+      }
+      setGoogleStatus('讀取中…')
+      const doc = await fetchDocumentText(token, id)
+      setSource(doc.text)
+      setLinkedDoc({ id, name: doc.name, loadedAt: Date.now() })
+      setGoogleStatus('已載入最新內容')
+    } catch (err) {
+      if (err instanceof TokenExpiredError) return signIn(action)
+      setGoogleStatus((err as Error).message)
+    }
+    setTimeout(() => setGoogleStatus(''), 3000)
+  }
+
+  // Google 登入後導回本站：繼續登入前要做的動作
+  useEffect(() => {
+    const result = consumeAuthRedirect()
+    if (!result) return
+    if ('error' in result) setGoogleStatus(result.error)
+    else runGoogle(result.action)
+  }, [])
 
   // 從分享連結（#s=...）載入腳本，只在開啟時執行一次
   useEffect(() => {
@@ -51,6 +88,10 @@ export default function App() {
       settings={effective}
       setSettings={setSettings}
       onStart={() => setScreen('prompt')}
+      linkedDoc={linkedDoc}
+      googleStatus={googleStatus}
+      onGoogleImport={() => runGoogle({ type: 'pick' })}
+      onGoogleReload={() => linkedDoc && runGoogle({ type: 'reload', id: linkedDoc.id })}
     />
   )
 }

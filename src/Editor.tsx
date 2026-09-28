@@ -3,6 +3,8 @@ import { useEffect, useRef, useState } from 'react'
 import { SAMPLE_SCRIPT } from './script'
 import type { Settings } from './settings'
 import { roleColor } from './settings'
+import type { LinkedDoc } from './google'
+import { googleEnabled } from './google'
 import { buildShareUrl } from './share'
 
 interface Props {
@@ -13,6 +15,10 @@ interface Props {
   settings: Settings
   setSettings: (update: (s: Settings) => Settings) => void
   onStart: () => void
+  linkedDoc: LinkedDoc | null
+  googleStatus: string
+  onGoogleImport: () => void
+  onGoogleReload: () => void
 }
 
 const isStandalone =
@@ -21,7 +27,19 @@ const isStandalone =
   (navigator as Navigator & { standalone?: boolean }).standalone === true
 const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent)
 
-export default function Editor({ source, setSource, roles, lineCount, settings, setSettings, onStart }: Props) {
+export default function Editor({
+  source,
+  setSource,
+  roles,
+  lineCount,
+  settings,
+  setSettings,
+  onStart,
+  linkedDoc,
+  googleStatus,
+  onGoogleImport,
+  onGoogleReload,
+}: Props) {
   const fileRef = useRef<HTMLInputElement>(null)
   const set = <K extends keyof Settings>(key: K, value: Settings[K]) => setSettings((s) => ({ ...s, [key]: value }))
 
@@ -76,6 +94,25 @@ export default function Editor({ source, setSource, roles, lineCount, settings, 
 
       <div className="columns">
         <section className="script-pane">
+          {googleEnabled && (
+            <div className="gdoc">
+              {linkedDoc ? (
+                <>
+                  <span className="gdoc-name">
+                    📄 {linkedDoc.name}
+                    <span className="muted">
+                      {' '}· 讀取於 {new Date(linkedDoc.loadedAt).toLocaleString('zh-TW', { dateStyle: 'short', timeStyle: 'short' })}
+                    </span>
+                  </span>
+                  <button className="primary" onClick={onGoogleReload}>重新讀取</button>
+                  <button onClick={onGoogleImport}>換一份</button>
+                </>
+              ) : (
+                <button className="primary" onClick={onGoogleImport}>從 Google 文件匯入</button>
+              )}
+              {googleStatus && <span className="muted status">{googleStatus}</span>}
+            </div>
+          )}
           <textarea
             value={source}
             onChange={(e) => setSource(e.target.value)}
@@ -97,6 +134,7 @@ export default function Editor({ source, setSource, roles, lineCount, settings, 
               <li>沒有前綴的下一行，會接在上一位角色的台詞後面</li>
               <li>空一行代表段落結束；之後沒有前綴的文字視為旁白</li>
               <li>整行用括號包起來，例如 <code>（兩人看向鏡頭）</code>，是舞台指示</li>
+              <li>「從 Google 文件匯入」可以直接讀取整份腳本文件；文件改過之後按「重新讀取」就會載入最新版</li>
               <li>「分享腳本連結」會把腳本放進網址裡，對方點開就能載入同一份腳本（不會上傳到任何伺服器）</li>
               <li>台詞中的 <code>（笑）</code> 會變淡顯示，<code>**重音**</code> 會加底線強調</li>
             </ul>

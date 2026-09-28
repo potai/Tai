@@ -127,7 +127,7 @@ button:disabled {
 .script-pane textarea {
   width: 100%;
   min-height: 260px;
-  height: calc(100dvh - 190px - var(--safe-t) - var(--safe-b));
+  height: calc(100dvh - 240px - var(--safe-t) - var(--safe-b));
   resize: vertical;
   padding: 12px;
   border-radius: 12px;
@@ -516,4 +516,25 @@ code {
   background: rgba(60, 60, 60, 0.9);
   color: var(--text);
   font: inherit;
+}
+
+.gdoc {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.gdoc-name {
+  flex: 1 1 100%;
+  font-size: 15px;
+  overflow-wrap: anywhere;
+}
+
+button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #000;
+  font-weight: 600;
 }
