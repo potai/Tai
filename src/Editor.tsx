@@ -2,7 +2,7 @@ import type { ChangeEvent, FormEvent, ReactNode } from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { SAMPLE_SCRIPT } from './script'
 import type { Settings } from './settings'
-import { roleColor } from './settings'
+import { formatSpeed, roleColor, SPEED_MAX, SPEED_MIN } from './settings'
 import type { LinkedDoc } from './google'
 import { googleEnabled } from './google'
 import { parseDocId } from './gdoc'
@@ -199,7 +199,7 @@ export default function Editor({
           <Slider label="字級" value={settings.fontSize} min={20} max={96} step={2} onChange={(v) => set('fontSize', v)} />
           <Slider label="行距" value={settings.lineHeight} min={1.1} max={2.2} step={0.05} onChange={(v) => set('lineHeight', v)} />
           <Slider label="左右邊距 %" value={settings.margin} min={0} max={30} step={1} onChange={(v) => set('margin', v)} />
-          <Slider label="速度" value={settings.speed} min={1} max={30} step={1} onChange={(v) => set('speed', v)} />
+          <Slider label="速度" value={settings.speed} min={SPEED_MIN} max={SPEED_MAX} step={0.5} onChange={(v) => set('speed', v)} format={formatSpeed} />
           <Slider label="焦點線位置" value={settings.focus} min={0.1} max={0.6} step={0.05} onChange={(v) => set('focus', v)} format={(v) => `${Math.round(v * 100)}%`} />
           <Slider label="開始前倒數（秒）" value={settings.countdown} min={0} max={10} step={1} onChange={(v) => set('countdown', v)} />
 

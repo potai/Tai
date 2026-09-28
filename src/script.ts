@@ -45,6 +45,8 @@ function cleanLine(raw: string): string {
   s = s.replace(/\\([!\\*#_\-.()[\]])/g, '$1')
   const bold = /^\*\*(.+)\*\*$/.exec(s)
   if (bold && !bold[1].includes('**')) s = bold[1].trim()
+  // 只把角色名稱設成粗體：「**阿明**：」或「**阿明：**」
+  s = s.replace(/^\*\*([^*\s]{1,12})\*\*\s*([:：])/, '$1$2').replace(/^\*\*([^*\s]{1,12}[:：])\*\*/, '$1')
   return s
 }
 

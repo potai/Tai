@@ -29,6 +29,8 @@ export interface LinkedDoc {
   name: string
   /** 上次讀取的時間（毫秒） */
   loadedAt: number
+  /** 上次讀進來的內容指紋，用來判斷之後有沒有在手機上改過 */
+  fingerprint?: string
 }
 
 // ---------- 登入 ----------

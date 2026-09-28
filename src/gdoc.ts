@@ -72,3 +72,28 @@ export function documentToText(doc: GoogleDocument): string {
   elementsToLines(doc.body?.content ?? [], lines)
   return lines.join('\n')
 }
+
+/** 簡單的內容指紋，用來判斷腳本讀進來之後有沒有被改過（不需要加密強度） */
+export function textFingerprint(text: string): string {
+  let h = 5381
+  for (let i = 0; i < text.length; i++) h = ((h * 33) ^ text.charCodeAt(i)) >>> 0
+  return `${h.toString(36)}:${text.length}`
+}
+
+/**
+ * 用 Google 文件內容覆蓋目前腳本前，是否需要先問使用者。
+ * 目前的腳本跟上次從 Google 讀進來的版本不同（在手機上改過，或是別處貼上的腳本），
+ * 而且新內容又不一樣時，才需要確認。
+ */
+export function shouldConfirmOverwrite(opts: {
+  current: string
+  incoming: string
+  /** 上次從 Google 讀進來時的指紋；沒有讀過就是 undefined */
+  loadedFingerprint?: string
+  /** 內建範例腳本，覆蓋它不用問 */
+  sample: string
+}): boolean {
+  const { current, incoming, loadedFingerprint, sample } = opts
+  if (current === incoming || current.trim() === '' || current === sample) return false
+  return loadedFingerprint === undefined || textFingerprint(current) !== loadedFingerprint
+}

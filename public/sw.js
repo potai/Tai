@@ -1,6 +1,7 @@
 // 離線快取：開過一次之後，沒有網路也能打開提詞機。
 // 頁面本身採「網路優先」（有網路就拿最新版），打包後的 JS／CSS 檔名含 hash、內容不會變，採「快取優先」。
-const CACHE = 'tai-v1'
+// 版本變更時會清掉舊快取（v1 曾把所有頁面都存在首頁的位置）
+const CACHE = 'tai-v2'
 const SHELL = ['./', './manifest.webmanifest', './icon.svg', './icon-180.png']
 const NETWORK_TIMEOUT = 3000
 
@@ -46,10 +47,11 @@ async function networkFirst(req) {
       fetch(req),
       new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), NETWORK_TIMEOUT)),
     ])
-    if (res.ok) cache.put('./', res.clone())
+    // 每個頁面各存各的位置，避免隱私權頁蓋掉提詞機首頁
+    if (res.ok) cache.put(req, res.clone())
     return res
   } catch {
-    return (await cache.match('./')) ?? Response.error()
+    return (await cache.match(req, { ignoreSearch: true })) ?? (await cache.match('./')) ?? Response.error()
   }
 }
 

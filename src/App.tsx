@@ -5,6 +5,7 @@ import { parseScript, SAMPLE_SCRIPT } from './script'
 import { DEFAULT_SETTINGS, usePersistentState } from './settings'
 import type { GoogleAction, LinkedDoc } from './google'
 import { consumeAuthRedirect, currentToken, fetchDocumentText, signIn, TokenExpiredError } from './google'
+import { shouldConfirmOverwrite, textFingerprint } from './gdoc'
 import { decodeScript, readShareCode } from './share'
 
 export default function App() {
@@ -21,9 +22,23 @@ export default function App() {
     try {
       setGoogleStatus('讀取中…')
       const doc = await fetchDocumentText(token, action.id)
-      setSource(doc.text)
-      setLinkedDoc({ id: action.id, name: doc.name, loadedAt: Date.now() })
-      setGoogleStatus('已載入最新內容')
+      const sameDoc = linkedDoc?.id === action.id
+      const ask = shouldConfirmOverwrite({
+        current: source,
+        incoming: doc.text,
+        loadedFingerprint: linkedDoc?.fingerprint,
+        sample: SAMPLE_SCRIPT,
+      })
+      const message = sameDoc
+        ? '目前的腳本在這裡改過，重新讀取會蓋掉這些修改。\n要用 Google 文件的最新內容取代嗎？'
+        : `目前的腳本在這裡改過（或是手動貼上的）。\n要用「${doc.name}」取代嗎？目前的內容會被覆蓋。`
+      if (ask && !confirm(message)) {
+        setGoogleStatus('已取消，保留目前的腳本')
+      } else {
+        setSource(doc.text)
+        setLinkedDoc({ id: action.id, name: doc.name, loadedAt: Date.now(), fingerprint: textFingerprint(doc.text) })
+        setGoogleStatus('已載入最新內容')
+      }
     } catch (err) {
       if (err instanceof TokenExpiredError) return signIn(action)
       setGoogleStatus((err as Error).message)

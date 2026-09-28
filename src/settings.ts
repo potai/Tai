@@ -5,7 +5,7 @@ export interface Settings {
   lineHeight: number
   /** 左右邊距，佔畫面寬度的百分比 */
   margin: number
-  /** 捲動速度等級 1–30 */
+  /** 捲動速度 0.5–30（可有一位小數） */
   speed: number
   mirrorX: boolean
   mirrorY: boolean
@@ -48,6 +48,22 @@ export const ROLE_PALETTE = ['#FFD54A', '#5AD1FF', '#FF8A80', '#B9F6CA', '#E1BEE
 
 export function roleColor(settings: Settings, roles: string[], role: string): string {
   return settings.colors[role] ?? ROLE_PALETTE[Math.max(0, roles.indexOf(role)) % ROLE_PALETTE.length]
+}
+
+export const SPEED_MIN = 0.5
+export const SPEED_MAX = 30
+
+/** 加速／減速一檔：每次約 10%，低速時也能細調；結果取到小數第一位 */
+export function stepSpeed(speed: number, dir: 1 | -1): number {
+  const scaled = dir === 1 ? speed * 1.1 : speed / 1.1
+  let next = Math.round(scaled * 10) / 10
+  if (next === speed) next = Math.round((speed + dir * 0.1) * 10) / 10
+  return Math.min(SPEED_MAX, Math.max(SPEED_MIN, next))
+}
+
+/** 顯示用：整數不帶小數點 */
+export function formatSpeed(speed: number): string {
+  return Number.isInteger(speed) ? String(speed) : speed.toFixed(1)
 }
 
 /** 每秒捲動的像素，跟字級成正比，讓換字級後閱讀速度大致不變 */
