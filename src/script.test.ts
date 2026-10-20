@@ -138,3 +138,44 @@ describe('bold speaker names', () => {
     expect(parseScript('阿明：這很**重要**').blocks[0].text).toBe('這很**重要**')
   })
 })
+
+describe('English and joined speaker names', () => {
+  // 名字自成一行、台詞寫在下面幾行，是英文腳本常見的寫法
+  const doc = `**Student A:**
+\\[Name of B\\],
+what holiday is coming soon?
+
+**Student B:**
+I know\\! It's Halloween\\!
+
+**Student A & B:**
+Happy Halloween\\!`
+
+  it('recognises multi-word names with the line on the following rows', () => {
+    const { roles, blocks } = parseScript(doc)
+    expect(roles).toEqual(['Student A', 'Student B'])
+    expect(blocks[0]).toMatchObject({ speaker: 'Student A', text: '[Name of B],\nwhat holiday is coming soon?' })
+    expect(blocks[2]).toMatchObject({ speaker: 'Student A & B', ensemble: true, text: 'Happy Halloween!' })
+    expect(visibleBlocks(blocks, 'Student B').map((b) => b.speaker)).toEqual(['Student B', 'Student A & B'])
+  })
+
+  it('does not treat ordinary English sentences as speakers', () => {
+    expect(parseScript('Remember this: it works').roles).toEqual([])
+    expect(parseScript('Ms Chen: Good morning').roles).toEqual(['Ms Chen'])
+  })
+
+  it('treats Both / A and B / 阿明、小美 as ensemble lines', () => {
+    for (const label of ['Both', 'Tom and Amy', '阿明、小美']) {
+      const { blocks, roles } = parseScript(`${label}: hi`)
+      expect(blocks[0].ensemble).toBe(true)
+      expect(roles).toEqual([])
+    }
+  })
+
+  it('only treats 和 as a join when both sides are real roles', () => {
+    const joined = parseScript('阿明：嗨\n小美：嗨\n阿明和小美：再見')
+    expect(joined.roles).toEqual(['阿明', '小美'])
+    expect(joined.blocks[2].ensemble).toBe(true)
+    expect(parseScript('小和尚：阿彌陀佛').roles).toEqual(['小和尚'])
+  })
+})
