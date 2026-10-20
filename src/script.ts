@@ -28,8 +28,11 @@ export interface ParsedScript {
   roles: string[]
 }
 
-// 角色名稱：1–12 個字，不含空白與句中標點，避免把「他說：好」這類句子誤判成角色
-const SPEAKER_RE = /^([^\s:：，,。.!！?？「」『』()（）[\]【】]{1,12})\s*[:：]\s*(.*)$/
+// 角色名稱：不含句中標點，避免把「他說：好」這類句子誤判成角色
+const NAME_PART = '[^\\s:：，,。.!！?？「」『』()（）[\\]【】]+'
+// 英文角色名可以有空格（例如「Student A」「Ms Chen」），最多四個字
+const SPEAKER_RE = new RegExp(`^(${NAME_PART}(?: ${NAME_PART}){0,3})\\s*[:：]\\s*(.*)$`)
+const MAX_NAME_LENGTH = 24
 const CUE_RE = /^[（(\[【].*[)）\]】]$/
 const SCENE_RE = /^第\s*[0-9０-９一二三四五六七八九十百]+\s*[場幕集]/
 // 「A. 製作資訊」「D. 正式腳本」這類大段落標題
@@ -37,7 +40,27 @@ const SECTION_RE = /^[A-Z][.．、]\s*\S/
 const SCRIPT_SECTION_RE = /腳本|劇本|台詞|對白/
 
 const CUE_LABELS = new Set(['畫面', '場景', '鏡頭', '音效', '配樂', '音樂', '字卡', '字幕', '動作', '轉場', '備註', '道具', '燈光'])
-const ENSEMBLE_LABELS = new Set(['兩人', '二人', '三人', '全體', '全部', '眾人', '大家', '所有人', '一起', '合', '齊聲'])
+const ENSEMBLE_LABELS = new Set([
+  '兩人', '二人', '三人', '全體', '全部', '眾人', '大家', '所有人', '一起', '合', '齊聲',
+  'both', 'all', 'everyone', 'together', 'all students',
+])
+// 「A & B」「A and B」「阿明、小美」這類多人合說
+const JOINED_RE = /\s*(?:&|＆|、|\/|\band\b)\s*/
+// 「阿明和小美」：「和」也可能是名字的一部分（例如「小和尚」），所以兩邊都必須是腳本裡出現過的角色才算
+const CJK_JOINED_RE = /和|與|跟/
+
+/** 標籤裡有空格時，每個字都要像名字（大寫開頭、數字、符號或中文），避免把英文句子誤判成角色 */
+function looksLikeName(label: string): boolean {
+  if (label.length > MAX_NAME_LENGTH) return false
+  if (!label.includes(' ')) return true
+  return label.split(' ').every((w) => /^[^a-z]/.test(w) || w === 'and')
+}
+
+function isEnsemble(label: string): boolean {
+  if (ENSEMBLE_LABELS.has(label.toLowerCase())) return true
+  const parts = label.split(JOINED_RE)
+  return parts.length >= 2 && parts.every((p) => p.trim() !== '')
+}
 
 /** 去掉從 Google 文件等來源複製時帶進來的 Markdown 記號 */
 function cleanLine(raw: string): string {
@@ -46,7 +69,7 @@ function cleanLine(raw: string): string {
   const bold = /^\*\*(.+)\*\*$/.exec(s)
   if (bold && !bold[1].includes('**')) s = bold[1].trim()
   // 只把角色名稱設成粗體：「**阿明**：」或「**阿明：**」
-  s = s.replace(/^\*\*([^*\s]{1,12})\*\*\s*([:：])/, '$1$2').replace(/^\*\*([^*\s]{1,12}[:：])\*\*/, '$1')
+  s = s.replace(/^\*\*([^*:：]{1,24})\*\*\s*([:：])/, '$1$2').replace(/^\*\*([^*:：]{1,24}[:：])\*\*/, '$1')
   return s
 }
 
@@ -85,14 +108,14 @@ export function parseScript(source: string): ParsedScript {
     }
 
     const m = SPEAKER_RE.exec(line)
-    if (m) {
+    if (m && looksLikeName(m[1])) {
       const [, label, text] = m
       if (CUE_LABELS.has(label)) {
         blocks.push({ id: id++, kind: 'cue', speaker: null, text })
         current = null
         continue
       }
-      const ensemble = ENSEMBLE_LABELS.has(label)
+      const ensemble = isEnsemble(label)
       if (!ensemble && !roles.includes(label)) roles.push(label)
       current = { id: id++, kind: 'line', speaker: label, text, ...(ensemble && { ensemble }) }
       blocks.push(current)
@@ -106,6 +129,14 @@ export function parseScript(source: string): ParsedScript {
 
     current = { id: id++, kind: 'note', speaker: null, text: line }
     blocks.push(current)
+  }
+
+  // 「阿明和小美」只有在阿明、小美都是角色時才算合說
+  for (const label of [...roles]) {
+    const parts = label.split(CJK_JOINED_RE)
+    if (parts.length < 2 || !parts.every((p) => p !== label && roles.includes(p))) continue
+    roles.splice(roles.indexOf(label), 1)
+    for (const b of blocks) if (b.speaker === label) b.ensemble = true
   }
 
   return { blocks, roles }
